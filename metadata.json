@@ -1,0 +1,5 @@
+{
+  "name": "PSV Server",
+  "description": "A comprehensive dashboard for managing SSH server access, user modifications, protocols, and file systems.",
+  "requestFramePermissions": []
+}
