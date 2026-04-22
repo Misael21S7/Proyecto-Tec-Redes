@@ -103,7 +103,7 @@ const translations = {
     retention: "Log Retention",
     retention_desc: "Store detailed activity logs for 90 days.",
     wipe: "Wipe All Configs",
-    login_title: "PSV Server Login",
+    login_title: "PSV SERVIDOR Login",
     username_label: "Username",
     password_label: "Password",
     login_btn: "Login",
@@ -166,7 +166,7 @@ const translations = {
     retention: "Retención de Logs",
     retention_desc: "Guardar logs detallados por 90 días.",
     wipe: "Borrar Todas las Configs",
-    login_title: "Inicio de Sesión PSV Server",
+    login_title: "Inicio de Sesión PSV SERVIDOR",
     username_label: "Usuario",
     password_label: "Contraseña",
     login_btn: "Entrar",
@@ -259,7 +259,7 @@ const Sidebar = ({ activeTab, setTab, lang, t, onLogout, userRole }: { activeTab
         <div className="bg-[var(--brand)] p-2 rounded">
           <Shield className="text-white w-5 h-5" />
         </div>
-        <span className="font-bold tracking-tight text-lg uppercase">PSV SERVER</span>
+        <span className="font-bold tracking-tight text-lg uppercase">PSV SERVIDOR</span>
       </div>
       
       <nav className="flex-1 p-4 space-y-1">
