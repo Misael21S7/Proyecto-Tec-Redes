@@ -44,3 +44,48 @@ body {
   font-family: var(--font-mono);
   font-size: 13px;
 }
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+:root {
+  --bg: #F0F0EE;
+  --ink: #141414;
+  --line: #D1D1CD;
+  --brand: #2A56DE;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+.data-grid {
+  display: grid;
+  border-left: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+}
+
+.data-cell {
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 1rem;
+}
+
+.col-header {
+  font-family: serif;
+  font-style: italic;
+  font-size: 12px;
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(0,0,0,0.02);
+}
+
+.data-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}

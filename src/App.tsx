@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   BarChart3, 
   Users, 
@@ -37,9 +37,18 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 
 // --- Types ---
-type Tab = 'dashboard' | 'users' | 'servers' | 'logs' | 'settings' | 'my_server';
+type Tab = 'dashboard' | 'users' | 'logs' | 'settings' | 'my_server';
 type Lang = 'en' | 'es';
 type UserRole = 'admin' | 'user';
+
+interface ActivityLog {
+  id: string;
+  time: string;
+  user: string;
+  action: string;
+  details: string;
+  type: 'file' | 'user' | 'system' | 'auth';
+}
 
 interface Server {
   id: string;
@@ -78,134 +87,147 @@ interface FileItem {
 // --- Translations ---
 const translations = {
   en: {
-    dashboard: "Dashboard",
-    servers: "Servers",
-    users: "Users",
-    logs: "Activity",
+    dashboard: "Status",
+    users: "Account Management",
+    logs: "History/Activity",
     settings: "Settings",
-    my_server: "My Server",
+    my_server: "File System",
     logout: "Logout",
-    sessions: "Active Sessions",
-    cpu: "CPU Avg Load",
-    disk: "Disk Usage",
-    traffic: "Traffic (24h)",
-    connected_servers: "Connected Servers",
-    view_all: "View All",
-    security_logs: "Security Logs",
-    system_operational: "System Operational",
-    search: "Global Search...",
-    access_control: "Access Control",
-    invite_user: "Invite User",
-    journal: "System Journal",
-    configuration: "System Configuration",
-    tfa: "Two-Factor Authentication",
-    tfa_desc: "Require 2FA for all administrative logins.",
-    retention: "Log Retention",
-    retention_desc: "Store detailed activity logs for 90 days.",
-    wipe: "Wipe All Configs",
+    sessions: "Current Sessions",
+    cpu: "CPU Load",
+    disk: "Storage",
+    traffic: "Data Flow",
+    connected_servers: "Primary Server Status",
+    view_all: "Refresh",
+    security_logs: "Recent Real-Time Activity",
+    system_operational: "Active Link",
+    search: "Search everything...",
+    access_control: "User Control",
+    invite_user: "Add User",
+    journal: "Master Activity Journal",
+    configuration: "System Config",
+    tfa: "Two-Factor Auth",
+    tfa_desc: "Require 2FA for all logins.",
+    retention: "Retention",
+    retention_desc: "Auto-clear logs after 90 days.",
+    wipe: "Purge System",
     login_title: "PSV SERVIDOR Login",
     username_label: "Username",
     password_label: "Password",
-    login_btn: "Login",
-    username: "Username",
+    login_btn: "Access Platform",
+    username: "User",
     role: "Role",
-    status: "Status",
-    last_login: "Last Login",
-    server_mgmt: "Server Management",
-    server_mgmt_desc: "Provision, monitor, and SSH into your infrastructure.",
+    status: "Service",
+    last_login: "Timestamp",
+    server_mgmt: "Connected Infrastructure",
+    server_mgmt_desc: "Viewing: us-west-prod · 192.168.1.10",
     add_server: "Add Server",
-    server_name: "Server Name",
-    ip_address: "IP Address",
-    ssh_port: "Port (SSH)",
-    ssh_username: "Username",
-    ssh_password: "Password / Key",
-    save_server: "Connect & Save",
-    cancel: "Cancel",
-    new_server_title: "Add New SSH Server",
-    tailing: "tailing logs...",
+    server_name: "Resource ID",
+    ip_address: "Link IP",
+    ssh_port: "Port",
+    ssh_username: "SSH User",
+    ssh_password: "SSH Pass",
+    save_server: "Confirm Link",
+    cancel: "Discard",
+    new_server_title: "Link New Infrastructure",
+    tailing: "streaming active events...",
     days: "Days",
-    file_explorer: "File Explorer",
-    explorer_desc: "Manage your documents and server files.",
-    new_file: "New File",
-    upload: "Upload",
-    download: "Download",
-    delete: "Delete",
-    name: "Name",
+    file_explorer: "Remote File Browser",
+    explorer_desc: "Direct manipulation of server volume.",
+    new_file: "Create File",
+    upload: "Push File",
+    download: "Pull",
+    delete: "RM",
+    name: "Filename",
     size: "Size",
-    modified: "Modified",
-    role_admin: "Administrator",
-    role_user: "Client / User",
-    change_password: "Change Password",
-    new_password: "New Password",
-    save_changes: "Save Changes",
-    pass_updated: "Password updated successfully"
+    modified: "Last Edit",
+    role_admin: "Superuser",
+    role_user: "Standard User",
+    change_password: "Reset Auth",
+    new_password: "New Credentials",
+    save_changes: "Update",
+    pass_updated: "Auth Vector Updated",
+    register_title: "Platform Enrollment",
+    register_btn: "Enroll",
+    have_account: "Secure Login",
+    need_account: "New Enrollment",
   },
   es: {
-    dashboard: "Tablero",
-    servers: "Servidores",
-    users: "Usuarios",
-    logs: "Actividad",
+    dashboard: "Estado",
+    users: "Gestión de Cuentas",
+    logs: "Historial/Actividad",
     settings: "Ajustes",
-    my_server: "Mi Servidor",
+    my_server: "Sistema de Archivos",
     logout: "Cerrar Sesión",
     sessions: "Sesiones Activas",
-    cpu: "Carga de CPU",
-    disk: "Uso de Disco",
-    traffic: "Tráfico (24h)",
-    connected_servers: "Servidores Conectados",
-    view_all: "Ver Todo",
-    security_logs: "Logs de Seguridad",
-    system_operational: "Sistema Operativo",
-    search: "Búsqueda Global...",
-    access_control: "Control de Acceso",
-    invite_user: "Invitar Usuario",
-    journal: "Diario del Sistema",
-    configuration: "Configuración del Sistema",
+    cpu: "Carga CPU",
+    disk: "Almacenamiento",
+    traffic: "Flujo de Datos",
+    connected_servers: "Estado del Servidor Principal",
+    view_all: "Actualizar",
+    security_logs: "Actividad Reciente en Tiempo Real",
+    system_operational: "Enlace Activo",
+    search: "Buscar en todo...",
+    access_control: "Control de Usuarios",
+    invite_user: "Agregar Usuario",
+    journal: "Diario Maestro de Actividad",
+    configuration: "Config. del Sistema",
     tfa: "Autenticación 2FA",
-    tfa_desc: "Requerir 2FA para todos los inicios de sesión admin.",
-    retention: "Retención de Logs",
-    retention_desc: "Guardar logs detallados por 90 días.",
-    wipe: "Borrar Todas las Configs",
+    tfa_desc: "Requerir 2FA para entrar.",
+    retention: "Retención",
+    retention_desc: "Limpiar logs cada 90 días.",
+    wipe: "Purgar Sistema",
     login_title: "Inicio de Sesión PSV SERVIDOR",
     username_label: "Usuario",
     password_label: "Contraseña",
-    login_btn: "Entrar",
+    login_btn: "Acceder",
     username: "Usuario",
     role: "Rol",
     status: "Estado",
-    last_login: "Último Acceso",
-    server_mgmt: "Gestión de Servidores",
-    server_mgmt_desc: "Provee, monitorea y entra vía SSH a tu infraestructura.",
+    last_login: "Marca de Tiempo",
+    server_mgmt: "Infraestructura Conectada",
+    server_mgmt_desc: "Visualizando: us-west-prod · 192.168.1.10",
     add_server: "Agregar Servidor",
-    server_name: "Nombre del Servidor",
-    ip_address: "Dirección IP",
-    ssh_port: "Puerto (SSH)",
-    ssh_username: "Usuario",
-    ssh_password: "Contraseña / Llave",
-    save_server: "Conectar y Guardar",
-    cancel: "Cancelar",
-    new_server_title: "Agregar Nuevo Servidor SSH",
-    tailing: "siguiendo logs...",
+    server_name: "ID del Recurso",
+    ip_address: "IP de Enlace",
+    ssh_port: "Puerto",
+    ssh_username: "Usuario SSH",
+    ssh_password: "Pass SSH",
+    save_server: "Confirmar Enlace",
+    cancel: "Descartar",
+    new_server_title: "Enlazar Nueva Infraestructura",
+    tailing: "rastreando eventos activos...",
     days: "Días",
-    file_explorer: "Explorador de Archivos",
-    explorer_desc: "Gestiona tus documentos y archivos del servidor.",
-    new_file: "Nuevo Archivo",
-    upload: "Subir",
+    file_explorer: "Explorador Remoto",
+    explorer_desc: "Manipulación directa del volumen del servidor.",
+    new_file: "Crear Archivo",
+    upload: "Subir Archivo",
     download: "Descargar",
-    delete: "Eliminar",
+    delete: "Borrar",
     name: "Nombre",
     size: "Tamaño",
-    modified: "Modificado",
-    role_admin: "Administrador",
-    role_user: "Cliente / Usuario",
-    change_password: "Cambiar Contraseña",
-    new_password: "Nueva Contraseña",
-    save_changes: "Guardar Cambios",
-    pass_updated: "Contraseña actualizada con éxito"
+    modified: "Último Cambio",
+    role_admin: "Superusuario",
+    role_user: "Usuario Estándar",
+    change_password: "Resetear Clave",
+    new_password: "Nueva Credencial",
+    save_changes: "Actualizar",
+    pass_updated: "Vector de Auth Actualizado",
+    register_title: "Inscripción en Plataforma",
+    register_btn: "Inscribirse",
+    have_account: "Entrar Seguro",
+    need_account: "Nueva Inscripción",
   }
 };
 
 // --- Mock Data ---
+const MOCK_ACTIVITIES: ActivityLog[] = [
+  { id: '1', time: '2024-03-25 09:12:44', user: 'admin', action: 'System Boot Success', details: 'Kernel 5.15.0-generic responsive', type: 'system' },
+  { id: '2', time: '2024-03-25 10:45:12', user: 'admin', action: 'User Management Access', details: 'Privileged session established', type: 'user' },
+  { id: '3', time: '2024-03-25 14:15:12', user: 'misaelsoto', action: 'Remote Disk Sync', details: 'Volume us-west-prod mounted', type: 'system' },
+  { id: '4', time: '2024-03-25 15:20:00', user: 'guest_test', action: 'Unauthorized Write Blocked', details: 'Write permission denied on /etc/', type: 'auth' },
+];
+
 const MOCK_FILES: FileItem[] = [
   { id: '1', name: 'documents', type: 'folder', modified: '2024-03-20 10:00' },
   { id: '2', name: 'backups', type: 'folder', modified: '2024-03-19 15:30' },
@@ -240,7 +262,6 @@ const MOCK_LOGS: LogEntry[] = [
 const Sidebar = ({ activeTab, setTab, lang, t, onLogout, userRole }: { activeTab: Tab, setTab: (t: Tab) => void, lang: Lang, t: any, onLogout: () => void, userRole: UserRole }) => {
   const adminItems: { id: Tab, icon: any, label: string }[] = [
     { id: 'dashboard', icon: LayoutDashboard, label: t.dashboard },
-    { id: 'servers', icon: Database, label: t.servers },
     { id: 'users', icon: Users, label: t.users },
     { id: 'logs', icon: Activity, label: t.logs },
     { id: 'settings', icon: Settings, label: t.settings },
@@ -308,36 +329,36 @@ const StatCard = ({ icon: Icon, label, value, subtext, color }: any) => (
   </div>
 );
 
-const DashboardContent = ({ t, servers }: { t: any, servers: Server[] }) => {
+const DashboardContent = ({ t, activeServer, activities }: { t: any, activeServer: Server, activities: ActivityLog[] }) => {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 data-grid">
         <StatCard 
           icon={Terminal} 
           label={t.sessions} 
-          value="12" 
-          subtext="2 super-admin, 10 users" 
+          value="1" 
+          subtext="Active Secure Tunnel" 
           color="text-blue-600"
         />
         <StatCard 
           icon={Cpu} 
           label={t.cpu} 
-          value="34%" 
-          subtext="Stable across clusters" 
+          value={`${activeServer.cpu}%`} 
+          subtext="Real-time Load" 
           color="text-green-600"
         />
         <StatCard 
           icon={HardDrive} 
           label={t.disk} 
           value="1.2 TB" 
-          subtext="85% capacity reached" 
+          subtext="Available Partition" 
           color="text-orange-600"
         />
         <StatCard 
           icon={Network} 
           label={t.traffic} 
           value="452 GB" 
-          subtext="In: 120GB | Out: 332GB" 
+          subtext="Throughput" 
           color="text-purple-600"
         />
       </div>
@@ -346,48 +367,51 @@ const DashboardContent = ({ t, servers }: { t: any, servers: Server[] }) => {
         <div className="lg:col-span-2 space-y-4">
           <div className="flex justify-between items-end">
             <h3 className="font-serif italic text-xl opacity-80">{t.connected_servers}</h3>
-            <button className="text-xs uppercase font-bold tracking-widest border-b border-[var(--ink)] pb-1 hover:opacity-60">{t.view_all}</button>
-          </div>
-          <div className="data-grid bg-white">
-            <div className="grid grid-cols-4 bg-gray-50 border-b border-[var(--line)]">
-              <div className="col-header p-3 border-r border-[var(--line)]">{t.username}</div>
-              <div className="col-header p-3 border-r border-[var(--line)]">IP Address</div>
-              <div className="col-header p-3 border-r border-[var(--line)]">{t.status}</div>
-              <div className="col-header p-3">Load</div>
+            <div className="flex items-center gap-2 text-xs font-mono text-green-600">
+              <Circle className="w-2 h-2 fill-current" />
+              STABLE CONNECTION
             </div>
-            {servers.slice(0, 4).map(server => (
-              <div key={server.id} className="grid grid-cols-4 hover:bg-gray-50 transition-colors group cursor-pointer">
-                <div className="p-4 border-r border-[var(--line)] border-b border-[var(--line)] font-medium text-sm">{server.name}</div>
-                <div className="p-4 border-r border-[var(--line)] border-b border-[var(--line)] data-value text-gray-500">{server.ip}</div>
-                <div className="p-4 border-r border-[var(--line)] border-b border-[var(--line)] flex items-center gap-2">
-                  <Circle className={`w-2 h-2 fill-current ${
-                    server.status === 'online' ? 'text-green-500' : 
-                    server.status === 'warning' ? 'text-orange-500' : 'text-red-500'
-                  }`} />
-                  <span className="text-xs uppercase font-bold tracking-tighter opacity-70">{server.status}</span>
-                </div>
-                <div className="p-4 border-b border-[var(--line)] flex items-center gap-3">
-                  <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                    <div className={`h-full ${server.cpu > 70 ? 'bg-orange-500' : 'bg-[var(--brand)]'}`} style={{ width: `${server.cpu}%` }}></div>
-                  </div>
-                  <span className="data-value text-xs">{server.cpu}%</span>
-                </div>
+          </div>
+          <div className="data-grid bg-white p-6 border border-[var(--line)]">
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                <h4 className="text-2xl font-bold tracking-tight mb-1">{activeServer.name}</h4>
+                <p className="font-mono text-gray-400 text-sm">{activeServer.ip}</p>
               </div>
-            ))}
+              <div className="text-right">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Location</p>
+                <p className="text-sm italic font-serif">{activeServer.location}</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-8">
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Uptime</p>
+                <p className="text-lg font-mono">14d 05h 22m</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Node Status</p>
+                <p className="text-lg font-bold text-green-600 uppercase tracking-tighter">Operational</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Auth Method</p>
+                <p className="text-lg font-mono">ED25519_KEY</p>
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="space-y-4">
           <h3 className="font-serif italic text-xl opacity-80">{t.security_logs}</h3>
           <div className="data-grid bg-white">
-            {MOCK_LOGS.map(log => (
-              <div key={log.id} className="p-4 border-b border-[var(--line)] border-r border-[var(--line)] space-y-2 hover:bg-gray-50 transition-colors">
-                <div className="flex justify-between text-[10px] font-mono text-gray-400 uppercase tracking-widest">
-                  <span>{log.timestamp}</span>
-                  <span className={log.result === 'success' ? 'text-green-600' : 'text-red-600'}>{log.result}</span>
+            {activities.slice(0, 6).map(log => (
+              <div key={log.id} className="p-4 border-b border-[var(--line)] border-r border-[var(--line)] space-y-1 hover:bg-gray-50 transition-colors">
+                <div className="flex justify-between text-[10px] font-mono text-gray-400">
+                  <span>{log.time}</span>
+                  <span className="uppercase">{log.type}</span>
                 </div>
-                <p className="text-sm font-medium">{log.action}</p>
-                <p className="text-[11px] text-gray-500">{t.username}: <span className="font-mono text-gray-900">{log.user}</span></p>
+                <p className="text-xs font-bold leading-tight">{log.action}</p>
+                <p className="text-[10px] text-gray-500 tracking-tight italic">By: {log.user}</p>
               </div>
             ))}
           </div>
@@ -397,32 +421,85 @@ const DashboardContent = ({ t, servers }: { t: any, servers: Server[] }) => {
   );
 };
 
-const FileExplorer = ({ t }: { t: any }) => {
+const FileExplorer = ({ t, onLogActivity, currentUser }: { t: any, onLogActivity: (action: string, details: string, type: any) => void, currentUser: string }) => {
   const [files, setFiles] = useState<FileItem[]>(MOCK_FILES);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleCreate = () => {
+    const filename = `doc_${files.length + 1}.txt`;
     const newFile: FileItem = {
       id: Math.random().toString(36).substr(2, 9),
-      name: `new_file_${files.length + 1}.txt`,
+      name: filename,
       type: 'file',
-      size: '0 KB',
+      size: '1 KB',
       modified: new Date().toLocaleString()
     };
     setFiles([newFile, ...files]);
+    onLogActivity(`Created file: ${filename}`, `System volume extension`, 'file');
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const uploadedFile = event.target.files?.[0];
+    if (uploadedFile) {
+      const sizeInKb = (uploadedFile.size / 1024).toFixed(1);
+      const newFile: FileItem = {
+        id: Math.random().toString(36).substr(2, 9),
+        name: uploadedFile.name,
+        type: 'file',
+        size: `${sizeInKb} KB`,
+        modified: new Date().toLocaleString()
+      };
+      setFiles([newFile, ...files]);
+      onLogActivity(`Uploaded file: ${uploadedFile.name}`, `Size: ${sizeInKb} KB`, 'file');
+    }
+  };
+
+  const handleDownload = (file: FileItem) => {
+    const element = document.createElement("a");
+    const content = `Contenido del archivo: ${file.name}\nTipo: ${file.type}\nTamaño: ${file.size}\nFecha: ${file.modified}`;
+    const fileBlob = new Blob([content], { type: 'text/plain' });
+    element.href = URL.createObjectURL(fileBlob);
+    element.download = file.name.endsWith('.txt') || file.name.includes('.') ? file.name : `${file.name}.txt`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    onLogActivity(`Downloaded file: ${file.name}`, `Source archive extraction`, 'file');
   };
 
   const handleDelete = (id: string) => {
-    setFiles(files.filter(f => f.id !== id));
+    const file = files.find(f => f.id === id);
+    if (file) {
+      setFiles(files.filter(f => f.id !== id));
+      onLogActivity(`Deleted file: ${file.name}`, `Permanent storage removal`, 'file');
+    }
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
+      <input 
+        type="file" 
+        className="hidden" 
+        ref={fileInputRef} 
+        onChange={handleFileUpload} 
+      />
+      
       <div className="flex justify-between items-center text-sm mb-4 bg-blue-50 p-4 border border-blue-100 rounded-lg">
         <div className="flex items-center gap-3 text-blue-700">
           <Circle className="w-2 h-2 fill-green-500 text-green-500" />
-          <span className="font-bold">Conectado a: us-west-prod (192.168.1.10)</span>
+          <span className="font-bold">Active Link: us-west-prod (192.168.1.10)</span>
         </div>
         <span className="text-blue-600 font-mono text-xs">Uptime: 14d 05h 22m</span>
+      </div>
+
+      <div className="flex justify-between items-center text-sm bg-gray-50 p-4 border border-gray-200 rounded-lg">
+        <div className="flex items-center gap-2 text-gray-500">
+          <Users className="w-4 h-4" />
+          <span>Operator: <span className="font-bold text-gray-900">{currentUser}</span></span>
+        </div>
+        <div className="flex items-center gap-2 text-gray-500">
+          <Activity className="w-4 h-4" />
+          <span>Live Tracking Active</span>
+        </div>
       </div>
 
       <div className="flex justify-between items-center">
@@ -437,7 +514,10 @@ const FileExplorer = ({ t }: { t: any }) => {
           >
             <FilePlus className="w-4 h-4" /> {t.new_file}
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-widest bg-[var(--ink)] text-white rounded hover:opacity-90 transition-all shadow-md">
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-widest bg-[var(--ink)] text-white rounded hover:opacity-90 transition-all shadow-md"
+          >
             <Upload className="w-4 h-4" /> {t.upload}
           </button>
         </div>
@@ -468,12 +548,17 @@ const FileExplorer = ({ t }: { t: any }) => {
               {file.modified}
             </div>
             <div className="col-span-1 p-4 flex items-center justify-around">
-               <button className="text-gray-400 hover:text-[var(--brand)] transition-colors">
+               <button 
+                onClick={() => handleDownload(file)}
+                className="text-gray-400 hover:text-[var(--brand)] transition-colors"
+                title={t.download}
+               >
                   <Download className="w-4 h-4" />
                </button>
                <button 
                 onClick={() => handleDelete(file.id)}
                 className="text-gray-400 hover:text-red-500 transition-colors"
+                title={t.delete}
                >
                   <Trash2 className="w-4 h-4" />
                </button>
@@ -608,8 +693,14 @@ const Header = ({ tab, lang, setLang, t, userRole }: { tab: string, lang: Lang, 
   </header>
 );
 
-const LoginScreen = ({ lang, setLang, t, onLogin }: { lang: Lang, setLang: (l: Lang) => void, t: any, onLogin: (role: UserRole) => void }) => {
+const LoginScreen = ({ lang, setLang, t, onLogin }: { lang: Lang, setLang: (l: Lang) => void, t: any, onLogin: (username: string, role: UserRole) => void }) => {
   const [selectedRole, setSelectedRole] = useState<UserRole>('admin');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [username, setUsername] = useState(selectedRole === 'admin' ? 'admin' : 'cliente_psv');
+
+  useEffect(() => {
+    setUsername(selectedRole === 'admin' ? 'admin' : 'cliente_psv');
+  }, [selectedRole]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[var(--bg)]">
@@ -632,25 +723,29 @@ const LoginScreen = ({ lang, setLang, t, onLogin }: { lang: Lang, setLang: (l: L
           <div className="w-16 h-16 bg-[var(--brand)] rounded-2xl flex items-center justify-center mx-auto mb-6 rotate-3">
             <Shield className="text-white w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-serif italic">{t.login_title}</h1>
-          <p className="text-xs text-gray-400 uppercase tracking-[0.2em] font-bold">Secure Access Portal</p>
+          <h1 className="text-2xl font-serif italic">{isRegistering ? t.register_title : t.login_title}</h1>
+          <p className="text-xs text-gray-400 uppercase tracking-[0.2em] font-bold">
+            {isRegistering ? 'Create new credentials' : 'Secure Access Portal'}
+          </p>
         </div>
 
         <div className="space-y-4">
-          <div className="flex bg-gray-100 p-1 rounded-lg">
-            <button 
-              onClick={() => setSelectedRole('admin')}
-              className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${selectedRole === 'admin' ? 'bg-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              {t.role_admin}
-            </button>
-            <button 
-              onClick={() => setSelectedRole('user')}
-              className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${selectedRole === 'user' ? 'bg-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              {t.role_user}
-            </button>
-          </div>
+          {!isRegistering && (
+            <div className="flex bg-gray-100 p-1 rounded-lg">
+              <button 
+                onClick={() => setSelectedRole('admin')}
+                className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${selectedRole === 'admin' ? 'bg-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                {t.role_admin}
+              </button>
+              <button 
+                onClick={() => setSelectedRole('user')}
+                className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${selectedRole === 'user' ? 'bg-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                {t.role_user}
+              </button>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <label className="text-[10px] uppercase font-bold tracking-widest text-gray-500">{t.username_label}</label>
@@ -658,7 +753,8 @@ const LoginScreen = ({ lang, setLang, t, onLogin }: { lang: Lang, setLang: (l: L
               <Users className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input 
                 type="text" 
-                defaultValue={selectedRole === 'admin' ? 'admin' : 'cliente_psv'}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 className="w-full bg-gray-50 border border-[var(--line)] rounded px-10 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--brand)]" 
               />
             </div>
@@ -676,131 +772,25 @@ const LoginScreen = ({ lang, setLang, t, onLogin }: { lang: Lang, setLang: (l: L
           </div>
         </div>
 
-        <button 
-          onClick={() => onLogin(selectedRole)}
-          className="w-full bg-[var(--ink)] text-white py-3 font-bold uppercase tracking-[0.3em] text-xs hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
-        >
-          {t.login_btn}
-        </button>
+        <div className="space-y-4">
+          <button 
+            onClick={() => onLogin(username, isRegistering ? 'user' : selectedRole)}
+            className="w-full bg-[var(--ink)] text-white py-3 font-bold uppercase tracking-[0.3em] text-xs hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+          >
+            {isRegistering ? t.register_btn : t.login_btn}
+          </button>
+
+          <button 
+            onClick={() => setIsRegistering(!isRegistering)}
+            className="w-full text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-[var(--brand)] transition-colors"
+          >
+            {isRegistering ? t.have_account : t.need_account}
+          </button>
+        </div>
 
         <p className="text-center text-[10px] text-gray-400 font-mono italic">
           v2.4.0-stable | build_2024.03
         </p>
-      </motion.div>
-    </div>
-  );
-};
-
-const AddServerModal = ({ isOpen, onClose, onAdd, t }: { isOpen: boolean, onClose: () => void, onAdd: (s: Server) => void, t: any }) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    ip: '',
-    port: '22',
-    username: '',
-    password: ''
-  });
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white w-full max-w-md border border-[var(--line)] shadow-2xl overflow-hidden"
-      >
-        <div className="p-6 border-b border-[var(--line)] bg-gray-50">
-          <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
-            <Terminal className="w-4 h-4 text-[var(--brand)]" />
-            {t.new_server_title}
-          </h3>
-        </div>
-        
-        <div className="p-8 space-y-6">
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-tighter text-gray-400">{t.server_name}</label>
-              <input 
-                type="text" 
-                placeholder="Productive Server"
-                className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--brand)]"
-                value={formData.name}
-                onChange={e => setFormData({...formData, name: e.target.value})}
-              />
-            </div>
-            
-            <div className="grid grid-cols-3 gap-4">
-              <div className="col-span-2 space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-tighter text-gray-400">{t.ip_address}</label>
-                <input 
-                  type="text" 
-                  placeholder="192.168.1.1"
-                  className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--brand)]"
-                  value={formData.ip}
-                  onChange={e => setFormData({...formData, ip: e.target.value})}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-tighter text-gray-400">{t.ssh_port}</label>
-                <input 
-                  type="text" 
-                  placeholder="22"
-                  className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--brand)]"
-                  value={formData.port}
-                  onChange={e => setFormData({...formData, port: e.target.value})}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-tighter text-gray-400">{t.ssh_username}</label>
-              <input 
-                type="text" 
-                placeholder="root"
-                className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--brand)]"
-                value={formData.username}
-                onChange={e => setFormData({...formData, username: e.target.value})}
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-tighter text-gray-400">{t.ssh_password}</label>
-              <input 
-                type="password" 
-                placeholder="••••••••"
-                className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--brand)]"
-                value={formData.password}
-                onChange={e => setFormData({...formData, password: e.target.value})}
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <button 
-              onClick={onClose}
-              className="flex-1 py-2 text-xs font-bold uppercase border border-gray-200 rounded hover:bg-gray-50 transition-colors"
-            >
-              {t.cancel}
-            </button>
-            <button 
-              onClick={() => {
-                onAdd({
-                  id: Math.random().toString(36).substr(2, 9),
-                  name: formData.name || formData.ip,
-                  ip: formData.ip,
-                  status: 'online',
-                  cpu: Math.floor(Math.random() * 20) + 5,
-                  memory: Math.floor(Math.random() * 30) + 10,
-                  location: 'Linux / Remote'
-                });
-                onClose();
-              }}
-              className="flex-1 py-2 text-xs font-bold uppercase bg-[var(--ink)] text-white rounded hover:opacity-90 transition-all"
-            >
-              {t.save_server}
-            </button>
-          </div>
-        </div>
       </motion.div>
     </div>
   );
@@ -811,17 +801,50 @@ export default function App() {
   const [lang, setLang] = useState<Lang>('es');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>('admin');
+  const [currentUser, setCurrentUser] = useState('');
+  const [activities, setActivities] = useState<ActivityLog[]>(MOCK_ACTIVITIES);
   const [servers, setServers] = useState<Server[]>(MOCK_SERVERS);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [passwordModal, setPasswordModal] = useState({ isOpen: false, username: '' });
 
   const t = translations[lang];
 
-  const handleLogin = (role: UserRole) => {
+  const handleLogActivity = (action: string, details: string, type: 'file' | 'user' | 'system' | 'auth' = 'system') => {
+    const newLog: ActivityLog = {
+      id: Math.random().toString(36).substr(2, 9),
+      time: new Date().toLocaleString(),
+      user: currentUser || 'system',
+      action,
+      details,
+      type
+    };
+    setActivities(prev => [newLog, ...prev]);
+  };
+
+  const handleLogin = (username: string, role: UserRole) => {
     setUserRole(role);
+    setCurrentUser(username);
     setIsLoggedIn(true);
     setActiveTab(role === 'admin' ? 'dashboard' : 'my_server');
+    
+    // Log the login
+    const newLog: ActivityLog = {
+      id: Math.random().toString(36).substr(2, 9),
+      time: new Date().toLocaleString(),
+      user: username,
+      action: 'Initial Platform Entry',
+      details: `Successful login as ${role}`,
+      type: 'auth'
+    };
+    setActivities(prev => [newLog, ...prev]);
   };
+
+  // Guard to prevent users from accessing admin tabs
+  useEffect(() => {
+    const adminTabs: Tab[] = ['dashboard', 'users', 'settings'];
+    if (isLoggedIn && userRole === 'user' && adminTabs.includes(activeTab)) {
+       setActiveTab('my_server');
+    }
+  }, [activeTab, userRole, isLoggedIn]);
 
   if (!isLoggedIn) {
     return <LoginScreen lang={lang} setLang={setLang} t={t} onLogin={handleLogin} />;
@@ -833,12 +856,6 @@ export default function App() {
         isOpen={passwordModal.isOpen}
         onClose={() => setPasswordModal({ ...passwordModal, isOpen: false })}
         username={passwordModal.username}
-        t={t}
-      />
-      <AddServerModal 
-        isOpen={isAddModalOpen} 
-        onClose={() => setIsAddModalOpen(false)} 
-        onAdd={(newServer) => setServers([...servers, newServer])}
         t={t}
       />
       <Sidebar 
@@ -862,74 +879,8 @@ export default function App() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {activeTab === 'dashboard' && <DashboardContent t={t} servers={servers} />}
-              {activeTab === 'my_server' && <FileExplorer t={t} />}
-              {activeTab === 'servers' && (
-                <div className="space-y-8 animate-in fade-in duration-500">
-                  <div className="flex justify-between items-center">
-                    <div className="space-y-1">
-                      <h3 className="font-serif italic text-2xl">{t.server_mgmt}</h3>
-                      <p className="text-sm text-gray-500">{t.server_mgmt_desc}</p>
-                    </div>
-                    <button 
-                      onClick={() => setIsAddModalOpen(true)}
-                      className="bg-[var(--ink)] text-white px-6 py-2.5 rounded font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-all flex items-center gap-2 shadow-lg"
-                    >
-                      <Plus className="w-4 h-4" /> {t.add_server}
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {servers.map(server => (
-                      <div key={server.id} className="data-cell bg-white hover:border-[var(--brand)] transition-all cursor-pointer group">
-                        <div className="flex justify-between items-start mb-6">
-                          <div className="p-3 bg-gray-50 rounded-lg group-hover:bg-blue-50 transition-colors">
-                            <CpuIcon className="w-6 h-6 text-gray-400 group-hover:text-[var(--brand)]" />
-                          </div>
-                          <div className="flex items-center gap-2">
-                             <Circle className={`w-2 h-2 fill-current ${
-                              server.status === 'online' ? 'text-green-500' : 
-                              server.status === 'warning' ? 'text-orange-500' : 'text-red-500'
-                            }`} />
-                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">{server.status}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-4">
-                          <div>
-                            <h4 className="font-bold text-lg leading-tight">{server.name}</h4>
-                            <p className="text-xs font-mono text-gray-400">{server.ip}</p>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4 py-4 border-y border-gray-50">
-                            <div>
-                              <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">CPU</p>
-                              <p className="text-sm font-mono">{server.cpu}%</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">Memory</p>
-                              <p className="text-sm font-mono">{server.memory}%</p>
-                            </div>
-                          </div>
-
-                          <div className="flex justify-between items-center text-[10px] font-mono text-gray-400 uppercase tracking-widest">
-                            <span>{server.location}</span>
-                            <button className="text-[var(--brand)] font-bold hover:underline">SSH CONNECT</button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    <button 
-                      onClick={() => setIsAddModalOpen(true)}
-                      className="border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center justify-center text-gray-400 hover:border-[var(--brand)] hover:text-[var(--brand)] transition-all bg-gray-50/50"
-                    >
-                      <Plus className="w-8 h-8 mb-2" />
-                      <span className="text-xs font-bold uppercase tracking-widest">{t.add_server}</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+              {activeTab === 'dashboard' && <DashboardContent t={t} activeServer={servers[0]} activities={activities} />}
+              {activeTab === 'my_server' && <FileExplorer t={t} onLogActivity={handleLogActivity} currentUser={currentUser} />}
               {activeTab === 'users' && (
                  <div className="space-y-6">
                     <div className="flex justify-between items-center">
@@ -939,7 +890,7 @@ export default function App() {
                     <div className="data-grid bg-white">
                       <div className="grid grid-cols-5 bg-gray-50 border-b border-[var(--line)]">
                         {[t.username, t.role, t.status, t.last_login, ''].map(h => (
-                          <div key={h} className="col-header p-4 border-r last:border-r-0 border-[var(--line)]">{h}</div>
+                          <div key={h} className="col-header p-4 border-r last:border-r-0 border-[var(--line)] text-center">{h}</div>
                         ))}
                       </div>
                       {MOCK_USERS.map(user => (
@@ -963,7 +914,7 @@ export default function App() {
                               <span className="text-xs capitalize">{user.status}</span>
                             </div>
                           </div>
-                          <div className="p-4 border-r border-[var(--line)] text-xs text-gray-500 italic font-serif">
+                          <div className="p-4 border-r border-[var(--line)] text-[10px] font-mono text-gray-400 italic">
                             {user.lastLogin}
                           </div>
                           <div className="p-4 flex items-center justify-center gap-2">
@@ -984,23 +935,46 @@ export default function App() {
                  </div>
               )}
               {activeTab === 'logs' && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-widest mb-2 font-bold">
-                    <Activity className="w-3 h-3" /> {t.journal}
+                <div className="space-y-6 animate-in fade-in duration-500">
+                  <div className="flex justify-between items-center">
+                    <div className="space-y-1">
+                      <h3 className="font-serif italic text-2xl">{t.journal}</h3>
+                      <p className="text-sm text-gray-500">Comprehensive system event tracking</p>
+                    </div>
                   </div>
-                  <div className="bg-[var(--ink)] text-gray-300 font-mono text-xs p-6 rounded-lg shadow-2xl space-y-1.5 border border-gray-800">
-                    <p className="text-blue-400">[SYSTEM] Initialization complete...</p>
-                    <p className="text-green-500">[INFO] SSHD listening on port 22</p>
-                    <p className="text-gray-500">2024-03-25T14:40:01Z - pam_unix(sshd:session): session opened for user admin by (uid=0)</p>
-                    <p className="text-red-400">2024-03-25T14:41:05Z - Failed password for invalid user bot_778 from 45.12.89.201 port 52312 ssh2</p>
-                    <p className="text-gray-500">2024-03-25T14:42:30Z - User misaelsoto connected via RSA key fingerprint SHA256:...</p>
-                    <motion.p 
-                      animate={{ opacity: [1, 0.5, 1] }} 
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                      className="text-white border-l-2 border-white pl-2 mt-4"
-                    >
-                      {t.tailing} _
-                    </motion.p>
+                  
+                  <div className="data-grid bg-white border border-[var(--line)]">
+                    <div className="grid grid-cols-12 bg-gray-50 border-b border-[var(--line)]">
+                      <div className="col-span-3 col-header p-4 border-r border-[var(--line)]">Timestamp</div>
+                      <div className="col-span-2 col-header p-4 border-r border-[var(--line)]">Actor</div>
+                      <div className="col-span-1 col-header p-4 border-r border-[var(--line)]">Type</div>
+                      <div className="col-span-6 col-header p-4">Activity Description</div>
+                    </div>
+
+                    {activities.map((log) => (
+                      <div key={log.id} className="grid grid-cols-12 hover:bg-gray-50 transition-colors border-b last:border-b-0 border-[var(--line)] group">
+                        <div className="col-span-3 p-4 border-r border-[var(--line)] flex items-center font-mono text-[10px] text-gray-500">
+                          {log.time}
+                        </div>
+                        <div className="col-span-2 p-4 border-r border-[var(--line)] flex items-center">
+                          <span className="text-xs font-bold">{log.user}</span>
+                        </div>
+                        <div className="col-span-1 p-4 border-r border-[var(--line)] flex items-center justify-center">
+                          <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border ${
+                            log.type === 'auth' ? 'border-red-200 text-red-700 bg-red-50' :
+                            log.type === 'file' ? 'border-blue-200 text-blue-700 bg-blue-50' :
+                            log.type === 'user' ? 'border-orange-200 text-orange-700 bg-orange-50' :
+                            'border-gray-200 text-gray-600 bg-gray-50'
+                          }`}>
+                            {log.type}
+                          </span>
+                        </div>
+                        <div className="col-span-6 p-4">
+                          <p className="text-sm font-medium">{log.action}</p>
+                          <p className="text-[10px] text-gray-400 italic">{log.details}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
