@@ -1217,6 +1217,8 @@ export default function App() {
     const user = users.find(u => u.id === id);
     if (!user) return;
     setUsers(users.filter(u => u.id !== id));
+    // Purge user's activity history
+    setActivities(prev => prev.filter(log => log.user.toLowerCase() !== user.username.toLowerCase()));
     handleLogActivity(`User account purged`, `Deleted entry: ${user.username}`, 'user');
   };
 
