@@ -35,6 +35,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import JSZip from 'jszip';
 
 // --- Types ---
 type Tab = 'dashboard' | 'users' | 'logs' | 'settings' | 'my_server';
@@ -287,7 +288,8 @@ const MOCK_USERS: User[] = [
   { id: '1', username: 'admin', role: 'admin', lastLogin: '2 mins ago', status: 'active', fileAccess: true },
   { id: '2', username: 'misaelsoto', role: 'admin', lastLogin: '1 hour ago', status: 'active', fileAccess: true },
   { id: '3', username: 'dev_user_01', role: 'user', lastLogin: 'Yesterday', status: 'active', fileAccess: true },
-  { id: '4', username: 'guest_test', role: 'user', lastLogin: '3 days ago', status: 'inactive', fileAccess: false },
+  { id: '4', username: 'guest_test', role: 'user', lastLogin: '3 days ago', status: 'active', fileAccess: true },
+  { id: '5', username: 'cliente_psv', role: 'user', lastLogin: 'Never', status: 'active', fileAccess: true },
 ];
 
 const MOCK_LOGS: LogEntry[] = [
@@ -517,8 +519,39 @@ const FileExplorer = ({ t, onLogActivity, currentUser }: { t: any, onLogActivity
     }
   };
 
-  const handleDownload = (file: FileItem) => {
-    if (file.type === 'folder') return;
+  const handleDownload = async (file: FileItem) => {
+    if (file.type === 'folder') {
+      const zip = new JSZip();
+      
+      const addFilesToZip = (folderId: string, folderPath: string) => {
+        const children = files.filter(f => f.parentId === folderId);
+        children.forEach(child => {
+          if (child.type === 'file') {
+            const content = `Mock content for ${child.name}\nSize: ${child.size}\nModified: ${child.modified}`;
+            zip.file(`${folderPath}${child.name}`, content);
+          } else {
+            addFilesToZip(child.id, `${folderPath}${child.name}/`);
+          }
+        });
+      };
+
+      addFilesToZip(file.id, '');
+      
+      try {
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const element = document.createElement("a");
+        element.href = URL.createObjectURL(blob);
+        element.download = `${file.name}.zip`;
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+        onLogActivity(`Downloaded folder as ZIP: ${file.name}`, `Source package generated`, 'file');
+      } catch (err) {
+        console.error("Zip generation error:", err);
+      }
+      return;
+    }
+
     const element = document.createElement("a");
     const content = `Contenido del archivo: ${file.name}\nTipo: ${file.type}\nTamaño: ${file.size}\nFecha: ${file.modified}`;
     const fileBlob = new Blob([content], { type: 'text/plain' });
@@ -656,15 +689,13 @@ const FileExplorer = ({ t, onLogActivity, currentUser }: { t: any, onLogActivity
                 {file.modified}
               </div>
               <div className="col-span-1 p-4 flex items-center justify-around">
-                 {file.type === 'file' && (
-                   <button 
-                    onClick={() => handleDownload(file)}
-                    className="text-gray-400 hover:text-[var(--brand)] transition-colors p-1"
-                    title={t.download}
-                   >
-                      <Download className="w-4 h-4" />
-                   </button>
-                 )}
+                 <button 
+                  onClick={() => handleDownload(file)}
+                  className="text-gray-400 hover:text-[var(--brand)] transition-colors p-1"
+                  title={t.download}
+                 >
+                    <Download className="w-4 h-4" />
+                 </button>
                  <button 
                   onClick={() => handleDelete(file.id)}
                   className="text-gray-400 hover:text-red-500 transition-colors p-1"
@@ -1234,7 +1265,7 @@ export default function App() {
         role: role,
         status: 'active',
         lastLogin: 'Just now',
-        fileAccess: role === 'admin' // Admins always have access, others start denied
+        fileAccess: role === 'admin' || username.toLowerCase() === 'cliente_psv' 
       };
       setUsers(prev => [newUser, ...prev]);
     } else {
